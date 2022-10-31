@@ -1,116 +1,104 @@
-from asyncio import start_server
-from cmath import pi
-from optparse import Values
-from turtle import width
+import math
+
 from scipy.integrate import solve_ivp
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from math import sin, cos
-import math
+from math import sin, cos, pi
 import pygame
 
-S0 = 1
-R = 1
-m = 1
-r0 = 1
-v1 = 0.5
-v2 = 0.5
-
-# start values
-M = 5
-m = 1
-L = 1
-a = 0.25
-I_skiva = M*L**2 /12
-I_vagn = 0.01
-F =0
-g = 9.82
-
-# x= (sin(y[1])/cos(y[1]))*((-(F*a -M*g*(l/2 -a)*cos(y[1]))/y[0])/m +2*y[2]*y[3] +y[0]*((F*a-M*g*(l/2-a)*cos(y[1])-m*g*y[0]*cos(y[1]))/(i_skiva + M*(l/2-a)**2 +I_vagn +m*(y[0])**2)) +y[2]*(y[3])**2)
-#   (sin(y[1])/cos(y[1]))*((-(F*a -M*g*(L/2 -a)*cos(y[1]))/y[0])/m +2*y[2]*y[3] +y[0]*((F*a-M*g*(L/2-a)*cos(y[1])-m*g*y[0]*cos(y[1]))/(I_skiva + M*(L/2-a)**2 +I_vagn +m*(y[0])**2)) +y[2]*(y[3])**2)
-# phi = (F*a -M*g*(l/2-a)*cos(y[1]) -m*g*y[0]*cos(y[1]))/(i_skiva + M*(l/2-a)**2 +I_vagn +m*(y[0])**2)
-
-# x från y = ((cos(y[1])*(-(F*a -M*g*(L/2 -a)*cos(y[1]))/y[0]) -m*g)/m +2*s[2]*s[3]*sin(s[1])+y[0]*((F*a -M*g*(l/2-a)*cos(y[1]) -m*g*y[0]*cos(y[1]))/(i_skiva + M*(l/2-a)**2 +I_vagn +m*(y[0])**2))*sin(y[1])+y[2]*((y[3])**2)*cos(y[1]))/cos(y[1])
+M=5
+m=1
+L=1
+a=0.25
+Iv=0.01
+Ip=(M*L**2)/12
+F0=200
+g=9.82
+x=0.3*L
+#I=I2+M*((L/2-a)**2)+I1+m*(y[0]**2)
 
 xpos = []
 ypos = []
 
+y0 = [x,pi/32,0 ,0]
 
-y0 = [0.3, -pi/32, 0 , 0]
-
-tend = 20
+tend = 10
 frames = 4000
-te= 4000
 
 def animate_events(i,xpos,ypos):
     redDot.set_data(xpos[i],ypos[i])
     return redDot,
 
-# change the s(y) function depending on the different cases
-
-    #case 1,a) (S0*(y/R)**1)
-    #case 1,b) (S0*(y/R)**(-1))
-    #case 1,c) (S0*(y/R)**(-1/10))
-    #case 2) (S0*((y-R)/R))
-    #case 3) (S0*math.exp((y-R)/R)*cos(y/R))
-
-def s(y):
-    return (S0*(y/R)**1)
-
-
 
 def f(t, y):
-    if(abs(cos(y[1])) < 0.001 or abs(y[0]) < 0.001):
-        return[y[2],
-               y[3],
-               (sin(y[1]+0.001)/cos(y[1]+0.001))*((-(F*a -M*g*(L/2 -a)*cos(y[1]))/(y[0]+0.01))/m +2*y[2]*y[3] +y[0]*((F*a-M*g*(L/2-a)*cos(y[1])-m*g*y[0]*cos(y[1]))/(I_skiva + M*(L/2-a)**2 +I_vagn +m*(y[0])**2)) +y[2]*(y[3])**2),
-               (F*a -M*g*(L/2-a)*cos(y[1]) -m*g*y[0]*cos(y[1]))/(I_skiva + M*(L/2-a)**2 +I_vagn +m*(y[0])**2)]
+    return [y[2],
+            y[3],
+            y[2]*y[3]^2 -(M*g/m)*sin(y[1]),
+            (F*a -M*g*cos(y[1])*(L/2 -a) + (m*y[0]*(y[2]*y[3]^2 - (M*g/m)*sin(y[1]))*cos(y[1]))/sin(y[1]) + m*y[0]*y[2]*y[3]^2 *(-2 -cos(y[1])/sin(y[1])))/(Ip + Iv + m*y[0]^2)
+            ]
+    #(abs(cos(y[1])) < 0.01)
+
+    """
+    if (abs(y[0]) < 0.001):
+        return [y[2],
+                y[3],
+                y[2]*y[3]^2 -(M*g/m)*sin(y[1]),
+                (F*a -M*g*cos(y[1])*(L/2 -a) + (m*y[0]*(y[2]*y[3]^2 - (M*g/m)*sin(y[1]))*cos(y[1]))/sin(y[1]) + m*y[0]*y[2]*y[3]^2 *(-2 -cos(y[1])/sin(y[1])))/(Ip + Iv + m*y[0]^2)
+                ]
+    elif (abs(cos(y[1])) < 0.001):
+        return [0,0,0,0]
     else:
         return [y[2],
                 y[3],
-                (sin(y[1])/cos(y[1]))*((-(F*a -M*g*(L/2 -a)*cos(y[1]))/y[0])/m +2*y[2]*y[3] +y[0]*((F*a-M*g*(L/2-a)*cos(y[1])-m*g*y[0]*cos(y[1]))/(I_skiva + M*(L/2-a)**2 +I_vagn +m*(y[0])**2)) +y[2]*(y[3])**2),
-                (F*a -M*g*(L/2-a)*cos(y[1]) -m*g*y[0]*cos(y[1]))/(I_skiva + M*(L/2-a)**2 +I_vagn +m*(y[0])**2)]
+                (sin(y[1])/cos(y[1]))*((-(F0*a -M*g*(L/2 -a)*cos(y[1]))/y[0])/m +2*y[2]*y[3] +y[0]*((F0*a-M*g*(L/2-a)*cos(y[1])-m*g*y[0]*cos(y[1]))/(I2+ I1) +y[2]*(y[3])**2)),
+                 (F0*a -M*g*(L/2-a)*cos(y[1]) -m*g*y[0]*cos(y[1]))/(I2 +I1)]
+    """
+
+        #[y[2],
+               # y[3],
+                #(sin(y[1])/cos(y[1]))*((-(F0*a -M*g*(L/2 -a)*cos(y[1]))/y[0])/m +2*y[2]*y[3] +y[0]*((F0*a-M*g*(L/2-a)*cos(y[1])-m*g*y[0]*cos(y[1]))/(I2+ I1) +y[2]*(y[3])**2),
+                #(F0*a -M*g*(L/2-a)*cos(y[1]) -m*g*y[0]*cos(y[1]))/(I2 +I1)]
+
+        #[y[2],
+                #y[3],
+               # ((-sin(y[1]) * (F0 * a - M * g * (L / 2 - a) * cos(y[1])) / x) / m
+               #  + 2 * y[2] * y[3] * sin(y[1]) +
+                # (y[0] * sin(y[1]) * (F0 * a - M * g * cos(y[1]) * (L / 2 - a) - m * g * cos(y[1]) * y[0]) / (
+                 #            I2 + M * ((L / 2 - a) ** 2) + I1 + m * (y[0] ** 2)))
+               #  + y[0] * (y[3] ** 2) * cos(y[1])) / cos(y[1]),(F0*a-(M*g*cos(y[1])*(L/2-a))-m*g*cos(y[1])*y[0])/(I2+M*((L/2-a)**2)+I1+m*(y[0]**
 
 
-sol = solve_ivp(f, [0, 20], y0, method='Radau', t_eval=np.linspace(0, 20, frames))
+sol = solve_ivp(f, [0, tend], y0, method='Radau', t_eval=np.linspace(0, tend, 4000))
 
+i=0
+for i in range(400):
+#while abs(sol.y[0][i])<L:
+    radius = (sol.y[0][i])
+    angle = (sol.y[1][i])
 
-for i in range(te): #frames
+    y = radius*sin(angle)
 
-    if sol.y[0][i]!= 0 and sol.y[1][i]!= 0:
-        radius = sol.y[0][i]
-        angle = sol.y[1][i]
+    x = radius*cos(angle)
+    xpos.append(x)
+    ypos.append(y)
+    
 
-        #print(len(sol.y[0]))
-
-        y = radius* sin(angle)
-
-        x = radius*cos(angle)
-        xpos.append(x)
-        ypos.append(y)
-    else:
-        print("hej")
-        pass
-
-
+    #i=i+1
+    
 
 fig, ax = plt.subplots(figsize=(5,5))
 plt.plot(xpos, ypos)
 plt.xlabel('x')
 plt.ylabel('y')
 
+
 redDot, = plt.plot(xpos[0], ypos[0], 'ro')
-anim = animation.FuncAnimation(fig, animate_events, frames=te, fargs=(xpos, ypos),
+anim = animation.FuncAnimation(fig, animate_events, frames=i, fargs=(xpos, ypos),
                                interval=10, blit=True, repeat= True)
-
-
 plt.show()
-        
-# Simple pygame program
 
-# Import and initialize the pygame library
 
 pygame.init()
 
@@ -155,7 +143,7 @@ while running:
     pygame.display.flip()
 
     t= t+1
-    if t>te:
+    if t>=i:
         t=0
 # Done! Time to quit.
 pygame.quit()
